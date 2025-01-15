@@ -1,65 +1,67 @@
-import { Server as HTTPServer } from 'http';
+import { Server as NetServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import { verify } from 'jsonwebtoken';
 import { env } from '@/lib/config/env';
 
-let io: SocketIOServer | null = null;
+class SocketService {
+  private static instance: SocketService;
+  private io: SocketIOServer | null = null;
+  private initialized = false;
 
-export function createSocketServer(httpServer: HTTPServer) {
-  if (io) return io;
+  private constructor() {}
 
-  io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: process.env.NEXT_PUBLIC_APP_URL,
-      methods: ['GET', 'POST'],
-      credentials: true,
-    },
-  });
-
-  // Authentication middleware
-  io.use((socket, next) => {
-    const token = socket.handshake.auth.token;
-
-    if (!token) {
-      return next(new Error('Authentication error'));
+  public static getInstance(): SocketService {
+    if (!SocketService.instance) {
+      SocketService.instance = new SocketService();
     }
+    return SocketService.instance;
+  }
 
+  public init(server: NetServer): SocketIOServer {
+    if (!this.initialized) {
+      this.io = new SocketIOServer(server, {
+        path: '/api/socketio',
+        addTrailingSlash: false,
+      });
+      this.initialized = true;
+
+      this.io.on('connection', (socket) => {
+        console.log('Client connected:', socket.id);
+
+        socket.on('disconnect', () => {
+          console.log('Client disconnected:', socket.id);
+        });
+      });
+    }
+    return this.io!;
+  }
+
+  public getIO(): SocketIOServer {
+    if (!this.initialized || !this.io) {
+      throw new Error('Socket.IO has not been initialized. Call init() first.');
+    }
+    return this.io;
+  }
+
+  public emitEventUpdate(eventId: string, update: { type: string; data: any }) {
     try {
-      const decoded = verify(token, env.JWT_SECRET);
-      socket.data.user = decoded;
-      next();
+      if (!this.initialized || !this.io) {
+        console.warn('Socket.IO not initialized, skipping event update');
+        return;
+      }
+      this.io.emit(`event:${eventId}`, update);
     } catch (error) {
-      next(new Error('Authentication error'));
+      console.error('Socket emission error:', error);
     }
-  });
-
-  // Connection handler
-  io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
-
-    // Join user-specific room
-    const userId = socket.data.user.id;
-    socket.join(`user:${userId}`);
-
-    // Join event rooms based on subscriptions
-    socket.on('join-event', (eventId: string) => {
-      socket.join(`event:${eventId}`);
-    });
-
-    // Leave event room
-    socket.on('leave-event', (eventId: string) => {
-      socket.leave(`event:${eventId}`);
-    });
-
-    // Handle disconnection
-    socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id);
-    });
-  });
-
-  return io;
+  }
 }
 
-export function getSocketServer() {
-  return io;
-} 
+export const socketService = SocketService.getInstance();
+export const initSocketServer = (server: NetServer) => socketService.init(server);
+export const getIO = () => socketService.getIO();
+export const emitEventUpdate = (eventId: string, update: Parameters<typeof socketService.emitEventUpdate>[1]) => {
+  try {
+    socketService.emitEventUpdate(eventId, update);
+  } catch (error) {
+    console.warn('Failed to emit event update:', error);
+  }
+}; 

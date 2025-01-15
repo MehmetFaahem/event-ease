@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -28,34 +28,39 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const createEventSchema = z.object({
+const updateEventSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
-  date: z.date().min(new Date(), 'Date cannot be in the past'),
+  date: z.date(),
   location: z.string().min(3, 'Location must be at least 3 characters'),
-  maxAttendees: z.number().int().min(1, 'Must allow at least 1 attendee').max(1000, 'Maximum 1000 attendees allowed'),
-  status: z.enum(['draft', 'published']).default('published'),
+  maxAttendees: z.number().int().min(1, 'Must allow at least 1 attendee'),
+  status: z.enum(['draft', 'published']),
 });
 
-type CreateEventFormValues = z.infer<typeof createEventSchema>;
+type UpdateEventFormValues = z.infer<typeof updateEventSchema>;
 
-export function CreateEventForm() {
+interface UpdateEventFormProps {
+  event: any;
+}
+
+export function UpdateEventForm({ event }: UpdateEventFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
-  const form = useForm<CreateEventFormValues>({
-    resolver: zodResolver(createEventSchema),
+  const form = useForm<UpdateEventFormValues>({
+    resolver: zodResolver(updateEventSchema),
     defaultValues: {
-      title: '',
-      description: '',
-      location: '',
-      maxAttendees: 100,
-      status: 'published',
+      title: event.title,
+      description: event.description,
+      date: new Date(event.date),
+      location: event.location,
+      maxAttendees: event.maxAttendees,
+      status: event.status,
     },
   });
 
-  async function onSubmit(data: CreateEventFormValues) {
+  async function onSubmit(data: UpdateEventFormValues) {
     setIsLoading(true);
     try {
       const formattedData = {
@@ -63,8 +68,8 @@ export function CreateEventForm() {
         date: data.date.toISOString(),
       };
 
-      const response = await fetch('/api/events', {
-        method: 'POST',
+      const response = await fetch(`/api/events/${event._id}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -73,14 +78,12 @@ export function CreateEventForm() {
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        console.error('Error creating event:', error);
-        throw new Error(error);
+        throw new Error(await response.text());
       }
 
       toast({
         title: 'Success',
-        description: 'Event created successfully',
+        description: 'Event updated successfully',
       });
 
       router.push('/dashboard/events');
@@ -88,7 +91,7 @@ export function CreateEventForm() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create event',
+        description: error instanceof Error ? error.message : 'Failed to update event',
         variant: 'destructive',
       });
     } finally {
@@ -99,7 +102,7 @@ export function CreateEventForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
+      <FormField
           control={form.control}
           name="title"
           render={({ field }) => (
@@ -262,7 +265,7 @@ export function CreateEventForm() {
             </FormItem>
           )}
         />
-
+        
         <div className="flex gap-4">
           <Button
             type="button"
@@ -273,10 +276,17 @@ export function CreateEventForm() {
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Creating...' : 'Create Event'}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              'Update Event'
+            )}
           </Button>
         </div>
       </form>
     </Form>
   );
-}
+} 

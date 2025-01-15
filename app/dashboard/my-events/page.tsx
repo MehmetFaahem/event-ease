@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { Metadata } from 'next';
-import { DashboardEventList } from '@/components/events/dashboard-event-list';
+import { MyEventList } from '@/components/events/my-event-list';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -8,17 +8,17 @@ import { Plus } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'My Events - Dashboard',
-  description: 'Manage your events',
+  description: 'View and manage your created events',
 };
 
-export default async function DashboardEventsPage() {
+export default async function MyEventsPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Events</h2>
+          <h2 className="text-3xl font-bold tracking-tight">My Events</h2>
           <p className="text-muted-foreground">
-            Create and manage your events here.
+            View and manage events you have created.
           </p>
         </div>
         <Button asChild>
@@ -38,8 +38,8 @@ export default async function DashboardEventsPage() {
           </div>
         }
       >
-        <DashboardEventList />
+        <MyEventList />
       </Suspense>
     </div>
   );
-} 
+}

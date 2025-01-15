@@ -26,13 +26,32 @@ const eventSchema = new Schema<EventDocument>(
     date: { type: Date, required: true },
     location: { type: String, required: true },
     maxAttendees: { type: Number, required: true },
-    currentAttendees: { type: Number, default: 0 },
+    currentAttendees: {
+      type: Number,
+      default: 0,
+    },
     organizer: { type: String, required: true },
-    attendees: [{ type: String }],
+    attendees: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+      default: [],
+    },
     status: {
       type: String,
       enum: ['draft', 'published', 'cancelled'],
       default: 'published',
+    },
+    registrations: {
+      type: [{
+        user: {
+          type: Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        registeredAt: {
+          type: Date,
+          default: Date.now,
+        },
+      }],
+      default: [],
     },
   },
   { timestamps: true }

@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/context/auth-context';
+import { PasswordInput } from '@/components/ui/password-input';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -84,8 +85,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input 
-                  type="password"
+                <PasswordInput
                   placeholder="Enter your password"
                   disabled={isLoading}
                   {...field}

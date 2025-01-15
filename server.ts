@@ -1,22 +1,35 @@
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
-import { createSocketServer } from './lib/socket/server';
+import { initSocketServer } from './lib/socket/server';
 
 const dev = process.env.NODE_ENV !== 'production';
-const app = next({ dev });
+const hostname = 'localhost';
+const port = 3000;
+
+const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const server = createServer((req, res) => {
-    const parsedUrl = parse(req.url!, true);
-    handle(req, res, parsedUrl);
+  const server = createServer(async (req, res) => {
+    try {
+      const parsedUrl = parse(req.url!, true);
+      await handle(req, res, parsedUrl);
+    } catch (err) {
+      console.error('Error occurred handling', req.url, err);
+      res.statusCode = 500;
+      res.end('Internal server error');
+    }
   });
 
   // Initialize Socket.IO
-  createSocketServer(server);
+  initSocketServer(server);
+  console.log('Socket.IO server initialized');
 
-  server.listen(process.env.PORT || 3000, () => {
-    console.log(`> Ready on http://localhost:${process.env.PORT || 3000}`);
+  server.listen(port, hostname, () => {
+    console.log(`> Ready on http://${hostname}:${port}`);
   });
+}).catch((err) => {
+  console.error('Error occurred starting server:', err);
+  process.exit(1);
 }); 

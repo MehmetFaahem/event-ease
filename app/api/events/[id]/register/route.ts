@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server';
+import type { AuthRequest } from '@/lib/middleware/withAuth';
 import { connectDB } from '@/lib/db/connect';
 import { EventModel } from '@/lib/models/event.model';
 import { withAuth } from '@/lib/middleware/withAuth';
-import type { AuthRequest } from '@/lib/middleware/withAuth';
-import { getSocketServer } from '@/lib/socket/server';
-
-export const dynamic = 'force-dynamic';
+import { emitEventUpdate } from '@/lib/socket/server';
 
 async function handler(
   req: AuthRequest,
-  context: { params: Record<string, string> }
+  { params }: { params: { id: string } }
 ) {
   if (req.method !== 'POST') {
     return new NextResponse('Method not allowed', { status: 405 });
@@ -17,26 +15,25 @@ async function handler(
 
   try {
     const userId = req.user?.id;
-    if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
-    }
+    const eventId = params.id;
 
     await connectDB();
 
-    // Get event and check if it exists
-    const event = await EventModel.findById(context.params.id);
+    const event = await EventModel.findById(eventId);
     if (!event) {
       return new NextResponse('Event not found', { status: 404 });
     }
 
-    // Check if event is published
-    if (event.status !== 'published') {
-      return new NextResponse('Event is not available for registration', { status: 400 });
-    }
-
-    // Check if event is full
     if (event.currentAttendees >= event.maxAttendees) {
       return new NextResponse('Event is full', { status: 400 });
+    }
+
+    // Initialize arrays if they don't exist
+    if (!event.attendees) {
+      event.attendees = [];
+    }
+    if (!event.registrations) {
+      event.registrations = [];
     }
 
     // Check if user is already registered
@@ -44,28 +41,42 @@ async function handler(
       return new NextResponse('Already registered', { status: 400 });
     }
 
-    // Update event with new attendee
-    const updatedEvent = await EventModel.findByIdAndUpdate(
-      context.params.id,
-      {
-        $push: { attendees: userId },
-        $inc: { currentAttendees: 1 },
-      },
-      { new: true }
-    );
+    // Add user to attendees and registrations
+    event.attendees.push(userId);
+    event.registrations.push({
+      user: userId,
+      registeredAt: new Date(),
+    });
+    event.currentAttendees += 1;
+    
+    await event.save();
 
-    // Emit socket event for real-time updates
-    const io = getSocketServer();
-    if (io) {
-      io.to(`event:${context.params.id}`).emit(
-        `event:${context.params.id}:update`,
-        updatedEvent
-      );
+    try {
+      emitEventUpdate(eventId, {
+        type: 'attendee-registered',
+        data: {
+          eventId,
+          currentAttendees: event.currentAttendees,
+          maxAttendees: event.maxAttendees,
+        },
+      });
+
+      if (event.currentAttendees === event.maxAttendees) {
+        emitEventUpdate(eventId, {
+          type: 'event-full',
+          data: { eventId },
+        });
+      }
+    } catch (socketError) {
+      console.error('Socket emission error:', socketError);
     }
 
-    return NextResponse.json(updatedEvent);
+    return NextResponse.json({
+      message: 'Registration successful',
+      currentAttendees: event.currentAttendees,
+    });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Event registration error:', error);
     return new NextResponse('Internal server error', { status: 500 });
   }
 }

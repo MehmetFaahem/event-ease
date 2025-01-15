@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/context/auth-context';
+import { PasswordInput } from '@/components/ui/password-input';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -108,8 +109,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input 
-                  type="password"
+                <PasswordInput
                   placeholder="Create a password"
                   disabled={isLoading}
                   {...field}
@@ -126,8 +126,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Confirm Password</FormLabel>
               <FormControl>
-                <Input 
-                  type="password"
+                <PasswordInput
                   placeholder="Confirm your password"
                   disabled={isLoading}
                   {...field}

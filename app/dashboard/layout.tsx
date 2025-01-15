@@ -23,24 +23,20 @@ const navItems = [
   },
   {
     title: 'Create Event',
-    href: '/events/create',
+    href: '/dashboard/events/create',
     icon: PlusCircle,
   },
   {
-    title: 'My Events',
+    title: 'Events',
     href: '/dashboard/events',
     icon: Calendar,
   },
   {
-    title: 'Attendees',
-    href: '/dashboard/attendees',
-    icon: Users,
+    title: 'My Events',
+    href: '/dashboard/my-events',
+    icon: Calendar,
   },
-  {
-    title: 'Settings',
-    href: '/dashboard/settings',
-    icon: Settings,
-  },
+ 
 ];
 
 export default function DashboardLayout({
