@@ -8,7 +8,7 @@ This is a simple event management system built with Next.js, MongoDB, and Socket
 
 1. Clone the repository
 2. Run `npm install`
-3. set the environment variables in the .env.local file
+3. set the environment variables in the .env.local file following the .env.example file
 env variables are:
 ```
 NEXT_PUBLIC_MONGODB_URI=mongodb://localhost:27017/event-management
